@@ -13,8 +13,7 @@ from streamlit_mic_recorder import speech_to_text
 
 
 # =========================================================
-# 1. 토익스피킹 연습용 문장 데이터
-#    time_limit_sec: 실제 시험처럼 답변 시간을 제한하기 위한 값입니다.
+# 1. 문제 데이터
 # =========================================================
 QUESTION_BANK = [
     {
@@ -46,17 +45,52 @@ QUESTION_BANK = [
         "english": "I like taking a walk in my free time because it reduces stress and refreshes my mind.",
     },
     {
+        "part": "Part 3",
+        "topic": "Family",
+        "time_limit_sec": 30,
+        "korean": "나는 보통 주말에 가족과 시간을 보낸다. 가족과 이야기하면 마음이 편해진다.",
+        "english": "I usually spend time with my family on weekends because talking with them makes me feel relaxed.",
+    },
+    {
+        "part": "Part 3",
+        "topic": "Exercise",
+        "time_limit_sec": 30,
+        "korean": "나는 건강을 위해 일주일에 두세 번 운동한다. 운동은 스트레스를 줄이는 데 도움이 된다.",
+        "english": "I exercise two or three times a week because it helps me reduce stress.",
+    },
+    {
+        "part": "Part 3",
+        "topic": "Movies",
+        "time_limit_sec": 30,
+        "korean": "나는 집에서 영화를 보는 것을 선호한다. 편안하고 비용도 절약할 수 있기 때문이다.",
+        "english": "I prefer watching movies at home because it is comfortable and saves money.",
+    },
+    {
+        "part": "Part 3",
+        "topic": "Restaurant",
+        "time_limit_sec": 30,
+        "korean": "나는 조용한 식당을 선호한다. 친구들과 편하게 대화할 수 있기 때문이다.",
+        "english": "I prefer quiet restaurants because I can talk with my friends comfortably.",
+    },
+    {
         "part": "Part 5",
         "topic": "Opinion",
         "time_limit_sec": 60,
         "korean": "나는 이 의견에 동의한다. 왜냐하면 이것은 사람들에게 더 많은 기회를 줄 수 있기 때문이다.",
         "english": "I agree with this opinion because it can give people more opportunities.",
     },
+    {
+        "part": "Part 5",
+        "topic": "Work",
+        "time_limit_sec": 60,
+        "korean": "나는 재택근무가 좋은 선택이라고 생각한다. 시간을 절약하고 일과 삶의 균형을 지킬 수 있기 때문이다.",
+        "english": "I think working from home is a good option because it saves time and helps people keep a work-life balance.",
+    },
 ]
 
 
 # =========================================================
-# 2. 페이지 기본 설정
+# 2. 페이지 설정
 # =========================================================
 st.set_page_config(
     page_title="나만의 토익스피킹 연습 앱",
@@ -66,10 +100,95 @@ st.set_page_config(
 
 
 # =========================================================
-# 3. 보조 함수
+# 3. 스타일
+# =========================================================
+st.markdown(
+    """
+    <style>
+    .block-container {
+        max-width: 720px;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    .app-title {
+        text-align: center;
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-bottom: 0.2rem;
+    }
+
+    .app-subtitle {
+        text-align: center;
+        color: #6b7280;
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .question-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 24px;
+        padding: 28px;
+        background: #ffffff;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+        margin-bottom: 18px;
+    }
+
+    .small-label {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #2563eb;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-right: 6px;
+    }
+
+    .korean-sentence {
+        font-size: 1.45rem;
+        font-weight: 800;
+        line-height: 1.55;
+        color: #111827;
+        margin-top: 18px;
+        margin-bottom: 12px;
+    }
+
+    .hint-text {
+        color: #6b7280;
+        font-size: 0.92rem;
+        line-height: 1.5;
+    }
+
+    .result-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 24px;
+        padding: 24px;
+        background: #f9fafb;
+        margin-top: 12px;
+    }
+
+    .answer-box {
+        border-radius: 16px;
+        padding: 16px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        margin-bottom: 12px;
+    }
+
+    .center-text {
+        text-align: center;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# =========================================================
+# 4. 보조 함수
 # =========================================================
 def normalize_text(text: str) -> str:
-    """문장 비교를 위해 소문자, 공백, 특수문자를 정리합니다."""
     text = text.lower()
     text = re.sub(r"[^a-z0-9\s']", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
@@ -77,7 +196,6 @@ def normalize_text(text: str) -> str:
 
 
 def calculate_similarity(user_answer: str, model_answer: str) -> int:
-    """사용자 답변과 모범 답안의 유사도를 0~100점으로 계산합니다."""
     user_clean = normalize_text(user_answer)
     model_clean = normalize_text(model_answer)
 
@@ -88,172 +206,8 @@ def calculate_similarity(user_answer: str, model_answer: str) -> int:
     return round(ratio * 100)
 
 
-def initialize_state():
-    """앱에서 사용할 상태값을 초기화합니다."""
-    if "recorder_key_number" not in st.session_state:
-        st.session_state.recorder_key_number = 0
-
-    if "current_question" not in st.session_state:
-        st.session_state.current_question = random.choice(QUESTION_BANK)
-
-    if "answer_input" not in st.session_state:
-        st.session_state.answer_input = ""
-
-    if "submitted" not in st.session_state:
-        st.session_state.submitted = False
-
-    if "similarity_score" not in st.session_state:
-        st.session_state.similarity_score = None
-
-    if "history" not in st.session_state:
-        st.session_state.history = []
-
-    if "review_notes" not in st.session_state:
-        st.session_state.review_notes = []
-
-    if "exam_started" not in st.session_state:
-        st.session_state.exam_started = False
-
-    if "exam_start_time" not in st.session_state:
-        st.session_state.exam_start_time = None
-
-    if "exam_end_time" not in st.session_state:
-        st.session_state.exam_end_time = None
-
-    if "answer_received_at" not in st.session_state:
-        st.session_state.answer_received_at = None
-
-    if "answer_duration_sec" not in st.session_state:
-        st.session_state.answer_duration_sec = None
-
-    if "answer_within_time" not in st.session_state:
-        st.session_state.answer_within_time = None
-
-    if "last_result" not in st.session_state:
-        st.session_state.last_result = None
-
-
-def reset_answer_state():
-    """현재 문제의 답변 상태를 초기화합니다."""
-    st.session_state.answer_input = ""
-    st.session_state.submitted = False
-    st.session_state.similarity_score = None
-    st.session_state.exam_started = False
-    st.session_state.exam_start_time = None
-    st.session_state.exam_end_time = None
-    st.session_state.answer_received_at = None
-    st.session_state.answer_duration_sec = None
-    st.session_state.answer_within_time = None
-    st.session_state.last_result = None
-    st.session_state.recorder_key_number += 1
-
-
-def pick_new_question():
-    """새 문제를 랜덤으로 뽑습니다."""
-    st.session_state.current_question = random.choice(QUESTION_BANK)
-    reset_answer_state()
-
-
-def start_exam_timer():
-    """제한시간 타이머를 시작합니다."""
-    current = st.session_state.current_question
-    now = time.time()
-    st.session_state.exam_started = True
-    st.session_state.exam_start_time = now
-    st.session_state.exam_end_time = now + current["time_limit_sec"]
-    st.session_state.answer_received_at = None
-    st.session_state.answer_duration_sec = None
-    st.session_state.answer_within_time = None
-    st.session_state.submitted = False
-    st.session_state.similarity_score = None
-    st.session_state.recorder_key_number += 1
-
-
-def get_remaining_seconds() -> int:
-    """남은 시간을 계산합니다."""
-    if not st.session_state.exam_started or st.session_state.exam_end_time is None:
-        return st.session_state.current_question["time_limit_sec"]
-
-    remaining = int(st.session_state.exam_end_time - time.time())
-    return max(0, remaining)
-
-
-def render_countdown_timer(total_seconds: int, end_time: float):
-    """브라우저 화면에서 움직이는 카운트다운 타이머를 보여줍니다."""
-    end_time_ms = int(end_time * 1000)
-    total_ms = int(total_seconds * 1000)
-
-    html = f"""
-    <div style="
-        border: 1px solid #ddd;
-        border-radius: 12px;
-        padding: 16px;
-        margin: 8px 0 16px 0;
-        background: #fafafa;
-        font-family: Arial, sans-serif;
-    ">
-        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">
-            ⏱️ 남은 시간: <span id="countdown">--</span>
-        </div>
-        <div style="
-            width: 100%;
-            height: 14px;
-            background: #e5e7eb;
-            border-radius: 999px;
-            overflow: hidden;
-        ">
-            <div id="bar" style="
-                height: 14px;
-                width: 100%;
-                background: #2563eb;
-                border-radius: 999px;
-                transition: width 0.2s linear, background 0.2s linear;
-            "></div>
-        </div>
-        <div id="status" style="font-size: 13px; color: #666; margin-top: 8px;">
-            시간 안에 답변을 마치고 녹음을 종료하세요.
-        </div>
-    </div>
-
-    <script>
-        const endTime = {end_time_ms};
-        const totalTime = {total_ms};
-
-        function updateTimer() {{
-            const now = Date.now();
-            const remaining = Math.max(0, endTime - now);
-            const seconds = Math.ceil(remaining / 1000);
-            const percent = Math.max(0, Math.min(100, (remaining / totalTime) * 100));
-
-            const countdown = document.getElementById("countdown");
-            const bar = document.getElementById("bar");
-            const status = document.getElementById("status");
-
-            countdown.innerText = seconds + "초";
-            bar.style.width = percent + "%";
-
-            if (seconds <= 5 && seconds > 0) {{
-                bar.style.background = "#f97316";
-                status.innerText = "마무리하세요. 시간이 거의 끝났습니다.";
-            }}
-
-            if (seconds <= 0) {{
-                bar.style.background = "#dc2626";
-                status.innerText = "시간 종료! 녹음을 종료하고 결과를 확인하세요.";
-            }}
-        }}
-
-        updateTimer();
-        setInterval(updateTimer, 250);
-    </script>
-    """
-
-    components.html(html, height=120)
-
-
 @st.cache_data(show_spinner=False)
 def make_tts_audio_bytes(text: str) -> bytes:
-    """모범 답안을 영어 음성 mp3로 변환합니다."""
     fp = BytesIO()
     tts = gTTS(text=text, lang="en", slow=False)
     tts.write_to_fp(fp)
@@ -262,33 +216,24 @@ def make_tts_audio_bytes(text: str) -> bytes:
 
 
 def make_result_id() -> str:
-    """오답노트 저장용 고유 ID를 만듭니다."""
     return str(int(time.time() * 1000))
 
 
-def is_in_review_notes(result_id: str) -> bool:
-    """해당 결과가 복습노트에 이미 들어 있는지 확인합니다."""
-    return any(note["id"] == result_id for note in st.session_state.review_notes)
+def get_score_message(score: int, within_time: bool) -> tuple[str, str]:
+    if not within_time:
+        return "시간 초과", "시간 안에 말하는 연습이 필요합니다."
 
-
-def add_review_note(result: dict):
-    """복습노트에 결과를 추가합니다."""
-    if not result:
-        return
-
-    if not is_in_review_notes(result["id"]):
-        st.session_state.review_notes.insert(0, result)
-
-
-def remove_review_note(result_id: str):
-    """복습노트에서 결과를 제거합니다."""
-    st.session_state.review_notes = [
-        note for note in st.session_state.review_notes if note["id"] != result_id
-    ]
+    if score >= 85:
+        return "훌륭해요", "모범답안과 매우 비슷하게 말했습니다."
+    elif score >= 70:
+        return "좋아요", "핵심 표현은 잘 말했습니다. 조금만 더 다듬으면 됩니다."
+    elif score >= 50:
+        return "괜찮아요", "문장의 큰 방향은 맞습니다. 모범문장을 듣고 다시 따라 해보세요."
+    else:
+        return "다시 연습해요", "이번 문장은 오답노트에 넣고 반복 연습하는 게 좋습니다."
 
 
 def make_review_csv() -> str:
-    """복습노트를 CSV 문자열로 만듭니다."""
     output = io.StringIO()
     writer = csv.writer(output)
 
@@ -319,78 +264,396 @@ def make_review_csv() -> str:
             ]
         )
 
-    # 엑셀에서 한글이 깨지지 않도록 BOM을 붙입니다.
     return "\ufeff" + output.getvalue()
 
 
+def render_countdown_timer(total_seconds: int, end_time: float):
+    end_time_ms = int(end_time * 1000)
+    total_ms = int(total_seconds * 1000)
+
+    html = f"""
+    <div style="
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        padding: 16px;
+        background: #ffffff;
+        margin-bottom: 14px;
+        font-family: Arial, sans-serif;
+    ">
+        <div style="font-size: 20px; font-weight: 800; margin-bottom: 10px;">
+            ⏱️ 남은 시간 <span id="countdown">--</span>
+        </div>
+
+        <div style="
+            width: 100%;
+            height: 16px;
+            background: #e5e7eb;
+            border-radius: 999px;
+            overflow: hidden;
+        ">
+            <div id="bar" style="
+                height: 16px;
+                width: 100%;
+                background: #22c55e;
+                border-radius: 999px;
+                transition: width 0.2s linear, background 0.2s linear;
+            "></div>
+        </div>
+
+        <div id="status" style="font-size: 13px; color: #6b7280; margin-top: 8px;">
+            제한시간 안에 답변을 마치고 녹음을 종료하세요.
+        </div>
+    </div>
+
+    <script>
+        const endTime = {end_time_ms};
+        const totalTime = {total_ms};
+
+        function updateTimer() {{
+            const now = Date.now();
+            const remaining = Math.max(0, endTime - now);
+            const seconds = Math.ceil(remaining / 1000);
+            const percent = Math.max(0, Math.min(100, (remaining / totalTime) * 100));
+
+            const countdown = document.getElementById("countdown");
+            const bar = document.getElementById("bar");
+            const status = document.getElementById("status");
+
+            countdown.innerText = seconds + "초";
+            bar.style.width = percent + "%";
+
+            if (seconds <= 5 && seconds > 0) {{
+                bar.style.background = "#f97316";
+                status.innerText = "마무리하세요. 시간이 거의 끝났습니다.";
+            }}
+
+            if (seconds <= 0) {{
+                bar.style.background = "#ef4444";
+                status.innerText = "시간 종료! 녹음을 종료하고 결과를 확인하세요.";
+            }}
+        }}
+
+        updateTimer();
+        setInterval(updateTimer, 250);
+    </script>
+    """
+
+    components.html(html, height=118)
+
+
 # =========================================================
-# 4. 앱 시작
+# 5. 상태 관리
+# =========================================================
+def reset_current_answer():
+    st.session_state.phase = "ready"
+    st.session_state.answer_input = ""
+    st.session_state.exam_start_time = None
+    st.session_state.exam_end_time = None
+    st.session_state.answer_received_at = None
+    st.session_state.answer_duration_sec = None
+    st.session_state.answer_within_time = None
+    st.session_state.current_result = None
+    st.session_state.recorder_key_number += 1
+
+
+def start_new_session():
+    questions = QUESTION_BANK.copy()
+    random.shuffle(questions)
+
+    st.session_state.session_questions = questions
+    st.session_state.current_index = 0
+    st.session_state.phase = "ready"
+    st.session_state.answer_input = ""
+    st.session_state.exam_start_time = None
+    st.session_state.exam_end_time = None
+    st.session_state.answer_received_at = None
+    st.session_state.answer_duration_sec = None
+    st.session_state.answer_within_time = None
+    st.session_state.current_result = None
+    st.session_state.session_results = []
+    st.session_state.recorder_key_number = st.session_state.get("recorder_key_number", 0) + 1
+
+
+def initialize_state():
+    if "review_notes" not in st.session_state:
+        st.session_state.review_notes = []
+
+    if "recorder_key_number" not in st.session_state:
+        st.session_state.recorder_key_number = 0
+
+    if "session_questions" not in st.session_state:
+        start_new_session()
+
+
+def get_current_question():
+    return st.session_state.session_questions[st.session_state.current_index]
+
+
+def start_answering():
+    current = get_current_question()
+    now = time.time()
+
+    st.session_state.phase = "answering"
+    st.session_state.answer_input = ""
+    st.session_state.exam_start_time = now
+    st.session_state.exam_end_time = now + current["time_limit_sec"]
+    st.session_state.answer_received_at = None
+    st.session_state.answer_duration_sec = None
+    st.session_state.answer_within_time = None
+    st.session_state.current_result = None
+    st.session_state.recorder_key_number += 1
+
+
+def score_current_answer():
+    current = get_current_question()
+    user_answer = st.session_state.answer_input.strip()
+
+    if not user_answer:
+        st.warning("먼저 영어로 답변하거나 문장을 입력해 주세요.")
+        return
+
+    now = time.time()
+
+    if st.session_state.answer_received_at is not None:
+        check_time = st.session_state.answer_received_at
+    else:
+        check_time = now
+
+    if st.session_state.exam_end_time is not None:
+        within_time = check_time <= st.session_state.exam_end_time
+    else:
+        within_time = True
+
+    if st.session_state.answer_duration_sec is not None:
+        duration_sec = st.session_state.answer_duration_sec
+    elif st.session_state.exam_start_time is not None:
+        duration_sec = round(now - st.session_state.exam_start_time, 1)
+    else:
+        duration_sec = None
+
+    score = calculate_similarity(user_answer, current["english"])
+
+    result = {
+        "id": make_result_id(),
+        "part": current["part"],
+        "topic": current["topic"],
+        "korean": current["korean"],
+        "model_answer": current["english"],
+        "user_answer": user_answer,
+        "score": score,
+        "within_time": within_time,
+        "duration_sec": duration_sec,
+        "time_limit_sec": current["time_limit_sec"],
+    }
+
+    st.session_state.current_result = result
+    st.session_state.session_results.append(result)
+    st.session_state.phase = "scored"
+
+
+def go_next_question():
+    if st.session_state.current_index >= len(st.session_state.session_questions) - 1:
+        st.session_state.phase = "finished"
+    else:
+        st.session_state.current_index += 1
+        reset_current_answer()
+
+
+def is_in_review_notes(result_id: str) -> bool:
+    return any(note["id"] == result_id for note in st.session_state.review_notes)
+
+
+def add_review_note(result: dict):
+    if result and not is_in_review_notes(result["id"]):
+        st.session_state.review_notes.insert(0, result)
+
+
+def remove_review_note(result_id: str):
+    st.session_state.review_notes = [
+        note for note in st.session_state.review_notes if note["id"] != result_id
+    ]
+
+
+# =========================================================
+# 6. 앱 시작
 # =========================================================
 initialize_state()
 
-st.title("🎙️ 나만의 토익스피킹 연습 앱")
-st.caption("실전 시간 제한 + 음성 인식 + 모범답안 듣기 + 오답노트")
+total_questions = len(st.session_state.session_questions)
+current_number = st.session_state.current_index + 1
 
-current = st.session_state.current_question
+st.markdown('<div class="app-title">🎙️ 토익스피킹 카드 연습</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="app-subtitle">한 문장씩 말하고, 듣고, 저장하면서 연습하세요</div>',
+    unsafe_allow_html=True,
+)
 
 
 # =========================================================
-# 5. 문제 영역
+# 7. 사이드바: 오답노트
 # =========================================================
-with st.container(border=True):
-    st.subheader("오늘의 문제")
+with st.sidebar:
+    st.header("⭐ 오답노트")
+
+    if not st.session_state.review_notes:
+        st.caption("아직 저장한 문장이 없습니다.")
+    else:
+        st.success(f"{len(st.session_state.review_notes)}개 저장됨")
+
+        csv_data = make_review_csv()
+
+        st.download_button(
+            label="CSV 다운로드",
+            data=csv_data,
+            file_name="toeic_speaking_review_notes.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
+        for idx, note in enumerate(st.session_state.review_notes, start=1):
+            with st.expander(f"{idx}. {note['topic']} / {note['score']}점"):
+                st.write(f"**KR:** {note['korean']}")
+                st.write(f"**모범:** {note['model_answer']}")
+                st.write(f"**내 답변:** {note['user_answer']}")
+
+                if st.button(
+                    "삭제",
+                    key=f"delete_review_{note['id']}",
+                    use_container_width=True,
+                ):
+                    remove_review_note(note["id"])
+                    st.rerun()
+
+    st.divider()
+
+    if st.button("🔁 새 세션 시작", use_container_width=True):
+        start_new_session()
+        st.rerun()
+
+
+# =========================================================
+# 8. 진행률
+# =========================================================
+if st.session_state.phase != "finished":
+    progress_value = st.session_state.current_index / total_questions
+    st.progress(progress_value)
+
+    st.markdown(
+        f"""
+        <div class="center-text">
+            <b>{current_number} / {total_questions}</b>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# =========================================================
+# 9. 완료 화면
+# =========================================================
+if st.session_state.phase == "finished":
+    results = st.session_state.session_results
+
+    if results:
+        avg_score = round(sum(r["score"] for r in results) / len(results))
+        timeout_count = sum(1 for r in results if not r["within_time"])
+        saved_count = len(st.session_state.review_notes)
+    else:
+        avg_score = 0
+        timeout_count = 0
+        saved_count = len(st.session_state.review_notes)
+
+    st.markdown(
+        f"""
+        <div class="question-card center-text">
+            <div style="font-size: 3rem;">🏁</div>
+            <h2>오늘의 연습 완료!</h2>
+            <p class="hint-text">한 세션을 끝까지 진행했습니다.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.write(f"**Part:** {current['part']}")
+        st.metric("평균 점수", f"{avg_score}점")
 
     with col2:
-        st.write(f"**Topic:** {current['topic']}")
+        st.metric("연습 문장", f"{len(results)}개")
 
     with col3:
-        st.write(f"**제한시간:** {current['time_limit_sec']}초")
+        st.metric("시간 초과", f"{timeout_count}개")
 
-    st.markdown("### KR 한국어 문장")
-    st.info(current["korean"])
+    st.info(f"현재 오답노트에는 {saved_count}개 문장이 저장되어 있습니다.")
 
-
-col_new_1, col_new_2 = st.columns(2)
-
-with col_new_1:
-    if st.button("🔄 새 문제 출제", use_container_width=True):
-        pick_new_question()
+    if st.button("🔁 다시 연습하기", use_container_width=True):
+        start_new_session()
         st.rerun()
 
-with col_new_2:
-    if st.button("🧹 현재 답변 초기화", use_container_width=True):
-        reset_answer_state()
-        st.rerun()
-
-
-st.divider()
+    st.stop()
 
 
 # =========================================================
-# 6. 실전 녹음 영역
+# 10. 현재 문제 카드
 # =========================================================
-st.subheader("1단계: 실전 시간 안에 영어로 답변하기")
+current = get_current_question()
 
-if not st.session_state.exam_started:
-    st.write("아래 버튼을 누르면 제한시간이 시작됩니다. 그다음 바로 녹음 버튼을 눌러 답변하세요.")
+st.markdown(
+    f"""
+    <div class="question-card">
+        <span class="small-label">{current['part']}</span>
+        <span class="small-label">{current['topic']}</span>
+        <span class="small-label">{current['time_limit_sec']}초</span>
 
-    if st.button("⏱️ 시험처럼 시작하기", use_container_width=True):
-        start_exam_timer()
+        <div class="korean-sentence">
+            {current['korean']}
+        </div>
+
+        <div class="hint-text">
+            위 문장을 영어로 자연스럽게 말해보세요.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# =========================================================
+# 11. READY 단계
+# =========================================================
+if st.session_state.phase == "ready":
+    st.markdown("### 준비되면 시작하세요")
+
+    st.write("버튼을 누르면 제한시간이 시작됩니다.")
+
+    if st.button("▶️ 시작하기", use_container_width=True):
+        start_answering()
         st.rerun()
 
-else:
-    if not st.session_state.submitted:
-        render_countdown_timer(
-            total_seconds=current["time_limit_sec"],
-            end_time=st.session_state.exam_end_time,
-        )
+    col_skip_1, col_skip_2 = st.columns(2)
 
-    st.write("녹음 시작 버튼을 누르고 영어로 답변한 뒤, 제한시간 안에 녹음을 종료하세요.")
+    with col_skip_1:
+        if st.button("⏭️ 이 문장 건너뛰기", use_container_width=True):
+            go_next_question()
+            st.rerun()
+
+    with col_skip_2:
+        if st.button("🔄 문장 다시 섞기", use_container_width=True):
+            start_new_session()
+            st.rerun()
+
+
+# =========================================================
+# 12. ANSWERING 단계
+# =========================================================
+elif st.session_state.phase == "answering":
+    render_countdown_timer(
+        total_seconds=current["time_limit_sec"],
+        end_time=st.session_state.exam_end_time,
+    )
+
+    st.markdown("### 영어로 답변하세요")
 
     spoken_text = speech_to_text(
         language="en",
@@ -403,6 +666,7 @@ else:
 
     if spoken_text:
         received_at = time.time()
+
         st.session_state.answer_input = spoken_text
         st.session_state.answer_received_at = received_at
 
@@ -411,237 +675,137 @@ else:
                 received_at - st.session_state.exam_start_time,
                 1,
             )
-        else:
-            st.session_state.answer_duration_sec = None
 
         if st.session_state.exam_end_time:
             st.session_state.answer_within_time = received_at <= st.session_state.exam_end_time
         else:
             st.session_state.answer_within_time = True
 
-        st.session_state.submitted = False
-        st.session_state.similarity_score = None
-
         if st.session_state.answer_within_time:
-            st.success("음성 인식 완료! 제한시간 안에 답변이 들어왔습니다.")
+            st.success("답변이 인식되었습니다. 시간 안에 들어왔습니다.")
         else:
-            st.error("음성 인식은 되었지만 제한시간을 초과했습니다.")
+            st.error("답변은 인식되었지만 제한시간을 초과했습니다.")
 
-st.text_area(
-    "내 답변",
-    key="answer_input",
-    height=120,
-    placeholder="마이크로 말하면 여기에 영어 문장이 자동으로 들어옵니다. 필요하면 직접 수정해도 됩니다.",
-)
+    st.text_area(
+        "내 답변",
+        key="answer_input",
+        height=110,
+        placeholder="마이크로 말하면 여기에 영어 문장이 들어옵니다. 필요하면 직접 수정해도 됩니다.",
+    )
 
-if st.session_state.answer_duration_sec is not None:
-    st.caption(f"답변 인식 시점: 시작 후 약 {st.session_state.answer_duration_sec}초")
+    if st.session_state.answer_duration_sec is not None:
+        st.caption(f"답변 인식 시점: 시작 후 약 {st.session_state.answer_duration_sec}초")
 
+    col_a, col_b = st.columns(2)
 
-st.divider()
+    with col_a:
+        if st.button("✅ 채점하기", use_container_width=True):
+            score_current_answer()
+            st.rerun()
+
+    with col_b:
+        if st.button("↩️ 다시 말하기", use_container_width=True):
+            start_answering()
+            st.rerun()
 
 
 # =========================================================
-# 7. 정답 확인 및 채점
+# 13. SCORED 단계
 # =========================================================
-st.subheader("2단계: 점수 확인하기")
+elif st.session_state.phase == "scored":
+    result = st.session_state.current_result
 
-if st.button("✅ 정답 확인", use_container_width=True):
-    user_answer = st.session_state.answer_input.strip()
+    title, message = get_score_message(
+        result["score"],
+        result["within_time"],
+    )
 
-    if not user_answer:
-        st.warning("먼저 시험처럼 시작하고, 마이크로 답변하거나 영어 문장을 입력해 주세요.")
-    else:
-        st.session_state.submitted = True
-
-        score = calculate_similarity(
-            user_answer,
-            current["english"],
-        )
-
-        st.session_state.similarity_score = score
-
-        # 음성 인식 시점이 있으면 그 시점을 기준으로 시간 내 답변 여부 판단
-        # 직접 타이핑한 경우에는 정답 확인 버튼을 누른 시간을 기준으로 판단
-        if st.session_state.exam_started and st.session_state.exam_end_time:
-            if st.session_state.answer_received_at is not None:
-                within_time = st.session_state.answer_received_at <= st.session_state.exam_end_time
-            else:
-                within_time = time.time() <= st.session_state.exam_end_time
-        else:
-            within_time = True
-
-        if st.session_state.answer_duration_sec is not None:
-            duration_sec = st.session_state.answer_duration_sec
-        elif st.session_state.exam_start_time is not None:
-            duration_sec = round(time.time() - st.session_state.exam_start_time, 1)
-        else:
-            duration_sec = None
-
-        result = {
-            "id": make_result_id(),
-            "part": current["part"],
-            "topic": current["topic"],
-            "korean": current["korean"],
-            "model_answer": current["english"],
-            "user_answer": user_answer,
-            "score": score,
-            "within_time": within_time,
-            "duration_sec": duration_sec,
-            "time_limit_sec": current["time_limit_sec"],
-        }
-
-        st.session_state.last_result = result
-
-        st.session_state.history.insert(0, result)
-        st.session_state.history = st.session_state.history[:10]
-
-
-if st.session_state.submitted and st.session_state.last_result:
-    result = st.session_state.last_result
-    score = result["score"]
+    st.markdown(
+        f"""
+        <div class="result-card center-text">
+            <div style="font-size: 2.6rem;">🎯</div>
+            <h2>{title}</h2>
+            <p>{message}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     col_score_1, col_score_2 = st.columns(2)
 
     with col_score_1:
-        st.metric("모범 답안과의 유사도", f"{score}점 / 100점")
+        st.metric("점수", f"{result['score']}점 / 100점")
 
     with col_score_2:
         if result["within_time"]:
-            st.metric("시간 판정", "시간 내 답변")
+            st.metric("시간", "시간 내 답변")
         else:
-            st.metric("시간 판정", "시간 초과")
+            st.metric("시간", "시간 초과")
 
-    if not result["within_time"]:
-        st.error("실전 모드 기준으로는 시간 초과입니다. 같은 문장을 다시 제한시간 안에 말해보세요.")
-    elif score >= 85:
-        st.success("좋습니다. 시간 안에 모범 답안과 매우 비슷하게 말했습니다.")
-    elif score >= 65:
-        st.info("괜찮습니다. 핵심 표현은 맞지만, 문장 구조를 조금 더 다듬으면 좋습니다.")
-    else:
-        st.warning("아직 차이가 있습니다. 모범 답안을 듣고 한 번 더 연습해보세요.")
+    if result["duration_sec"] is not None:
+        st.caption(f"소요 시간: 약 {result['duration_sec']}초 / 제한 {result['time_limit_sec']}초")
 
-    col_answer_1, col_answer_2 = st.columns(2)
+    st.markdown("### 답변 비교")
 
-    with col_answer_1:
-        st.markdown("#### ✅ 모범 답안")
-        st.write(result["model_answer"])
+    st.markdown(
+        f"""
+        <div class="answer-box">
+            <b>🗣️ 내 답변</b><br>
+            {result['user_answer']}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    with col_answer_2:
-        st.markdown("#### 🗣️ 내 답변")
-        st.write(result["user_answer"])
+    st.markdown(
+        f"""
+        <div class="answer-box">
+            <b>✅ 모범 답안</b><br>
+            {result['model_answer']}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("#### 🔊 모범 문장 듣기")
+    st.markdown("### 🔊 모범 문장 듣기")
 
     try:
-        with st.spinner("모범 문장 음성을 만드는 중입니다..."):
-            audio_bytes = make_tts_audio_bytes(result["model_answer"])
+        audio_bytes = make_tts_audio_bytes(result["model_answer"])
         st.audio(audio_bytes, format="audio/mp3")
     except Exception:
-        st.warning("현재 모범 문장 음성을 불러오지 못했습니다. 인터넷 연결이나 gTTS 상태를 확인해 주세요.")
+        st.warning("모범 문장 음성을 불러오지 못했습니다. 인터넷 연결 상태를 확인해 주세요.")
 
-    st.markdown("#### ⭐ 오답노트 저장")
-
-    already_checked = is_in_review_notes(result["id"])
+    already_saved = is_in_review_notes(result["id"])
 
     review_checked = st.checkbox(
-        "이 문장을 복습노트에 보관하기",
-        value=already_checked,
-        key=f"review_check_{result['id']}",
+        "⭐ 이 문장을 오답노트에 저장하기",
+        value=already_saved,
+        key=f"review_checkbox_{result['id']}",
     )
 
     if review_checked:
         add_review_note(result)
-        st.caption("복습노트에 보관 중입니다.")
+        st.caption("오답노트에 저장되었습니다.")
     else:
         remove_review_note(result["id"])
-        st.caption("복습노트에 보관하지 않습니다.")
+        st.caption("오답노트에 저장하지 않았습니다.")
 
-    with st.expander("복습 포인트 보기"):
-        st.write("- 점수는 아직 AI 채점이 아니라 모범 답안과의 문장 유사도입니다.")
-        st.write("- 제한시간 안에 말하는 습관을 만들기 위해 시간 초과 여부를 따로 표시합니다.")
-        st.write("- 다음 단계에서 Gemini API를 붙이면 문법, 발음 추정, 자연스러운 표현까지 피드백할 수 있습니다.")
+    col_next_1, col_next_2 = st.columns(2)
 
+    with col_next_1:
+        if st.button("🔁 같은 문장 다시하기", use_container_width=True):
+            reset_current_answer()
+            st.rerun()
 
-st.divider()
-
-
-# =========================================================
-# 8. 오답노트 영역
-# =========================================================
-st.subheader("3단계: 나만의 오답노트")
-
-if not st.session_state.review_notes:
-    st.info("아직 오답노트에 저장한 문장이 없습니다. 채점 후 '복습노트에 보관하기'를 체크해 보세요.")
-else:
-    st.success(f"현재 {len(st.session_state.review_notes)}개 문장이 오답노트에 저장되어 있습니다.")
-
-    csv_data = make_review_csv()
-
-    st.download_button(
-        label="📥 오답노트 CSV 다운로드",
-        data=csv_data,
-        file_name="toeic_speaking_review_notes.csv",
-        mime="text/csv",
-        use_container_width=True,
-    )
-
-    for idx, note in enumerate(st.session_state.review_notes, start=1):
-        with st.container(border=True):
-            st.markdown(f"### {idx}. {note['part']} / {note['topic']}")
-
-            col_note_1, col_note_2 = st.columns(2)
-
-            with col_note_1:
-                st.write(f"**점수:** {note['score']}점 / 100점")
-
-            with col_note_2:
-                if note["within_time"]:
-                    st.write("**시간:** 시간 내 답변")
-                else:
-                    st.write("**시간:** 시간 초과")
-
-            st.write(f"**KR:** {note['korean']}")
-            st.write(f"**✅ 모범 답안:** {note['model_answer']}")
-            st.write(f"**🗣️ 내 답변:** {note['user_answer']}")
-
-            try:
-                note_audio = make_tts_audio_bytes(note["model_answer"])
-                st.audio(note_audio, format="audio/mp3")
-            except Exception:
-                st.caption("음성을 불러오지 못했습니다.")
-
-            if st.button(
-                "🗑️ 이 문장 오답노트에서 삭제",
-                key=f"delete_note_{note['id']}",
-                use_container_width=True,
-            ):
-                remove_review_note(note["id"])
-                st.rerun()
-
-
-st.divider()
+    with col_next_2:
+        if st.button("다음 문장 →", use_container_width=True):
+            go_next_question()
+            st.rerun()
 
 
 # =========================================================
-# 9. 최근 연습 기록
+# 14. 하단 안내
 # =========================================================
-with st.expander("최근 연습 기록 보기"):
-    if not st.session_state.history:
-        st.write("아직 연습 기록이 없습니다.")
-    else:
-        for idx, item in enumerate(st.session_state.history, start=1):
-            time_label = "시간 내" if item.get("within_time") else "시간 초과"
-
-            st.markdown(
-                f"**{idx}. {item['part']} / {item['topic']} / {item['score']}점 / {time_label}**"
-            )
-            st.write(f"🇰🇷 {item['korean']}")
-            st.write(f"✅ 모범 답안: {item['model_answer']}")
-            st.write(f"🗣️ 내 답변: {item['user_answer']}")
-            st.divider()
-
-
 st.caption(
-    "현재 오답노트는 브라우저 세션 기준으로 저장됩니다. 새로고침이나 서버 재시작 시 사라질 수 있으므로 중요한 문장은 CSV로 다운로드하세요."
+    "현재 점수는 AI 채점이 아니라 모범답안과의 문장 유사도입니다. 다음 단계에서 Gemini API를 붙이면 실제 피드백형 채점으로 확장할 수 있습니다."
 )
