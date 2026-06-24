@@ -5,6 +5,7 @@ import re
 import time
 from difflib import SequenceMatcher
 from io import BytesIO
+from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -13,176 +14,149 @@ from streamlit_mic_recorder import speech_to_text
 
 
 # =========================================================
-# 1. 문제 데이터
-# =========================================================
-QUESTION_BANK = [
-    {
-        "part": "Part 3",
-        "topic": "Shopping",
-        "time_limit_sec": 30,
-        "korean": "나는 온라인 쇼핑을 더 선호한다. 왜냐하면 편리하고 시간을 절약할 수 있기 때문이다.",
-        "english": "I prefer shopping online because it is convenient and saves time.",
-    },
-    {
-        "part": "Part 3",
-        "topic": "Eating out",
-        "time_limit_sec": 30,
-        "korean": "나는 보통 주말에 가족과 외식을 한다. 우리는 다양한 음식을 먹을 수 있어서 외식을 좋아한다.",
-        "english": "I usually eat out with my family on weekends because we can enjoy many kinds of food.",
-    },
-    {
-        "part": "Part 3",
-        "topic": "Travel",
-        "time_limit_sec": 30,
-        "korean": "나는 다른 사람들과 여행하는 것을 선호한다. 왜냐하면 같은 추억을 공유할 수 있기 때문이다.",
-        "english": "I prefer traveling with other people because I can share the same memories with them.",
-    },
-    {
-        "part": "Part 3",
-        "topic": "Free time",
-        "time_limit_sec": 30,
-        "korean": "나는 여가 시간에 산책하는 것을 좋아한다. 스트레스를 줄이고 기분 전환에 도움이 된다.",
-        "english": "I like taking a walk in my free time because it reduces stress and refreshes my mind.",
-    },
-    {
-        "part": "Part 3",
-        "topic": "Family",
-        "time_limit_sec": 30,
-        "korean": "나는 보통 주말에 가족과 시간을 보낸다. 가족과 이야기하면 마음이 편해진다.",
-        "english": "I usually spend time with my family on weekends because talking with them makes me feel relaxed.",
-    },
-    {
-        "part": "Part 3",
-        "topic": "Exercise",
-        "time_limit_sec": 30,
-        "korean": "나는 건강을 위해 일주일에 두세 번 운동한다. 운동은 스트레스를 줄이는 데 도움이 된다.",
-        "english": "I exercise two or three times a week because it helps me reduce stress.",
-    },
-    {
-        "part": "Part 3",
-        "topic": "Movies",
-        "time_limit_sec": 30,
-        "korean": "나는 집에서 영화를 보는 것을 선호한다. 편안하고 비용도 절약할 수 있기 때문이다.",
-        "english": "I prefer watching movies at home because it is comfortable and saves money.",
-    },
-    {
-        "part": "Part 3",
-        "topic": "Restaurant",
-        "time_limit_sec": 30,
-        "korean": "나는 조용한 식당을 선호한다. 친구들과 편하게 대화할 수 있기 때문이다.",
-        "english": "I prefer quiet restaurants because I can talk with my friends comfortably.",
-    },
-    {
-        "part": "Part 5",
-        "topic": "Opinion",
-        "time_limit_sec": 60,
-        "korean": "나는 이 의견에 동의한다. 왜냐하면 이것은 사람들에게 더 많은 기회를 줄 수 있기 때문이다.",
-        "english": "I agree with this opinion because it can give people more opportunities.",
-    },
-    {
-        "part": "Part 5",
-        "topic": "Work",
-        "time_limit_sec": 60,
-        "korean": "나는 재택근무가 좋은 선택이라고 생각한다. 시간을 절약하고 일과 삶의 균형을 지킬 수 있기 때문이다.",
-        "english": "I think working from home is a good option because it saves time and helps people keep a work-life balance.",
-    },
-]
-
-
-# =========================================================
-# 2. 페이지 설정
+# 1. 페이지 설정
 # =========================================================
 st.set_page_config(
-    page_title="나만의 토익스피킹 연습 앱",
+    page_title="토익스피킹 카드 연습",
     page_icon="🎙️",
     layout="centered",
 )
 
 
 # =========================================================
-# 3. 스타일
+# 2. 기본 스타일
 # =========================================================
 st.markdown(
     """
-    <style>
-    .block-container {
-        max-width: 720px;
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
+<style>
+.block-container {
+    max-width: 720px;
+    padding-top: 1.2rem;
+    padding-bottom: 2rem;
+}
 
-    .app-title {
-        text-align: center;
-        font-size: 2.2rem;
-        font-weight: 800;
-        margin-bottom: 0.2rem;
-    }
+div.stButton > button {
+    border-radius: 14px;
+    min-height: 3rem;
+    font-weight: 700;
+    font-size: 1rem;
+}
 
-    .app-subtitle {
-        text-align: center;
-        color: #6b7280;
-        font-size: 0.95rem;
-        margin-bottom: 1.5rem;
-    }
+textarea {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-radius: 14px !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+}
 
-    .question-card {
-        border: 1px solid #e5e7eb;
-        border-radius: 24px;
-        padding: 28px;
-        background: #ffffff;
-        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
-        margin-bottom: 18px;
-    }
-
-    .small-label {
-        display: inline-block;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #eff6ff;
-        color: #2563eb;
-        font-size: 0.82rem;
-        font-weight: 700;
-        margin-right: 6px;
-    }
-
-    .korean-sentence {
-        font-size: 1.45rem;
-        font-weight: 800;
-        line-height: 1.55;
-        color: #111827;
-        margin-top: 18px;
-        margin-bottom: 12px;
-    }
-
-    .hint-text {
-        color: #6b7280;
-        font-size: 0.92rem;
-        line-height: 1.5;
-    }
-
-    .result-card {
-        border: 1px solid #e5e7eb;
-        border-radius: 24px;
-        padding: 24px;
-        background: #f9fafb;
-        margin-top: 12px;
-    }
-
-    .answer-box {
-        border-radius: 16px;
-        padding: 16px;
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        margin-bottom: 12px;
-    }
-
-    .center-text {
-        text-align: center;
-    }
-    </style>
+textarea:disabled {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #111827 !important;
+}
+</style>
     """,
     unsafe_allow_html=True,
 )
+
+
+# =========================================================
+# 3. questions.csv 읽기
+# =========================================================
+REQUIRED_COLUMNS = ["part", "category", "korean", "english", "time_limit_sec"]
+
+
+def clean_text(value) -> str:
+    if value is None:
+        return ""
+    return str(value).replace("\ufeff", "").strip()
+
+
+@st.cache_data(show_spinner=False)
+def load_questions_from_csv(csv_path: str = "questions.csv") -> tuple[list[dict], list[str]]:
+    """
+    questions.csv 파일을 읽어서 앱 문제은행으로 변환합니다.
+    반환값:
+    - questions: 정상 로드된 문제 리스트
+    - errors: CSV 오류 메시지 리스트
+    """
+    path = Path(csv_path)
+    errors = []
+
+    if not path.exists():
+        return [], [f"{csv_path} 파일을 찾을 수 없습니다. app.py와 같은 폴더에 questions.csv를 넣어주세요."]
+
+    questions = []
+
+    try:
+        with path.open("r", encoding="utf-8-sig", newline="") as file:
+            reader = csv.DictReader(file)
+
+            if reader.fieldnames is None:
+                return [], ["CSV 파일의 첫 줄, 즉 컬럼명이 없습니다."]
+
+            fieldnames = [clean_text(name) for name in reader.fieldnames]
+
+            missing_columns = [col for col in REQUIRED_COLUMNS if col not in fieldnames]
+            if missing_columns:
+                return [], [
+                    "CSV 컬럼명이 맞지 않습니다.",
+                    f"필요한 컬럼: {REQUIRED_COLUMNS}",
+                    f"현재 컬럼: {fieldnames}",
+                    f"누락된 컬럼: {missing_columns}",
+                ]
+
+            for row_number, row in enumerate(reader, start=2):
+                # 쉼표 따옴표 오류가 있으면 DictReader가 None 키를 만들 수 있습니다.
+                if None in row:
+                    errors.append(
+                        f"{row_number}행: 쉼표 때문에 컬럼이 깨졌을 가능성이 있습니다. "
+                        "영어/한국어 문장 안에 쉼표가 있으면 큰따옴표로 감싸야 합니다."
+                    )
+                    continue
+
+                part = clean_text(row.get("part"))
+                category = clean_text(row.get("category"))
+                korean = clean_text(row.get("korean"))
+                english = clean_text(row.get("english"))
+                time_limit_raw = clean_text(row.get("time_limit_sec"))
+
+                if not part or not category or not korean or not english:
+                    errors.append(f"{row_number}행: part/category/korean/english 중 빈 값이 있습니다.")
+                    continue
+
+                try:
+                    time_limit_sec = int(time_limit_raw)
+                except ValueError:
+                    if part == "Part 5":
+                        time_limit_sec = 60
+                    else:
+                        time_limit_sec = 30
+                    errors.append(
+                        f"{row_number}행: time_limit_sec 값이 숫자가 아니어서 {time_limit_sec}초로 자동 보정했습니다."
+                    )
+
+                questions.append(
+                    {
+                        "part": part,
+                        "category": category,
+                        "korean": korean,
+                        "english": english,
+                        "time_limit_sec": time_limit_sec,
+                    }
+                )
+
+    except UnicodeDecodeError:
+        return [], ["CSV 파일 인코딩 문제입니다. questions.csv를 UTF-8 형식으로 저장해 주세요."]
+    except Exception as e:
+        return [], [f"CSV를 읽는 중 오류가 발생했습니다: {e}"]
+
+    if not questions:
+        errors.append("정상적으로 읽힌 문제가 없습니다. questions.csv 내용을 확인해 주세요.")
+
+    return questions, errors
 
 
 # =========================================================
@@ -240,7 +214,7 @@ def make_review_csv() -> str:
     writer.writerow(
         [
             "Part",
-            "Topic",
+            "Category",
             "Korean",
             "Model Answer",
             "My Answer",
@@ -254,7 +228,7 @@ def make_review_csv() -> str:
         writer.writerow(
             [
                 note.get("part", ""),
-                note.get("topic", ""),
+                note.get("category", ""),
                 note.get("korean", ""),
                 note.get("model_answer", ""),
                 note.get("user_answer", ""),
@@ -279,6 +253,7 @@ def render_countdown_timer(total_seconds: int, end_time: float):
         background: #ffffff;
         margin-bottom: 14px;
         font-family: Arial, sans-serif;
+        color: #111827;
     ">
         <div style="font-size: 20px; font-weight: 800; margin-bottom: 10px;">
             ⏱️ 남은 시간 <span id="countdown">--</span>
@@ -356,8 +331,33 @@ def reset_current_answer():
     st.session_state.recorder_key_number += 1
 
 
+def build_filtered_questions(all_questions: list[dict]) -> list[dict]:
+    selected_parts = st.session_state.get("selected_parts", ["Part 3", "Part 5"])
+    selected_categories = st.session_state.get("selected_categories", [])
+
+    filtered = [
+        q for q in all_questions
+        if q["part"] in selected_parts
+    ]
+
+    if selected_categories:
+        filtered = [
+            q for q in filtered
+            if q["category"] in selected_categories
+        ]
+
+    return filtered
+
+
 def start_new_session():
-    questions = QUESTION_BANK.copy()
+    all_questions = st.session_state.all_questions
+    questions = build_filtered_questions(all_questions)
+
+    if not questions:
+        st.session_state.session_questions = []
+        st.session_state.phase = "empty"
+        return
+
     random.shuffle(questions)
 
     st.session_state.session_questions = questions
@@ -381,8 +381,20 @@ def initialize_state():
     if "recorder_key_number" not in st.session_state:
         st.session_state.recorder_key_number = 0
 
+    if "selected_parts" not in st.session_state:
+        st.session_state.selected_parts = ["Part 3", "Part 5"]
+
+    if "selected_categories" not in st.session_state:
+        st.session_state.selected_categories = []
+
+    if "all_questions" not in st.session_state:
+        st.session_state.all_questions = []
+
     if "session_questions" not in st.session_state:
-        start_new_session()
+        st.session_state.session_questions = []
+
+    if "phase" not in st.session_state:
+        st.session_state.phase = "ready"
 
 
 def get_current_question():
@@ -436,7 +448,7 @@ def score_current_answer():
     result = {
         "id": make_result_id(),
         "part": current["part"],
-        "topic": current["topic"],
+        "category": current["category"],
         "korean": current["korean"],
         "model_answer": current["english"],
         "user_answer": user_answer,
@@ -479,20 +491,61 @@ def remove_review_note(result_id: str):
 # =========================================================
 initialize_state()
 
-total_questions = len(st.session_state.session_questions)
-current_number = st.session_state.current_index + 1
+loaded_questions, csv_errors = load_questions_from_csv("questions.csv")
 
-st.markdown('<div class="app-title">🎙️ 토익스피킹 카드 연습</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="app-subtitle">한 문장씩 말하고, 듣고, 저장하면서 연습하세요</div>',
-    unsafe_allow_html=True,
-)
+if not loaded_questions:
+    st.title("🎙️ 토익스피킹 카드 연습")
+    st.error("questions.csv에서 문제를 불러오지 못했습니다.")
+    for error in csv_errors:
+        st.write(f"- {error}")
+    st.stop()
+
+st.session_state.all_questions = loaded_questions
+
+if not st.session_state.session_questions:
+    start_new_session()
+
+st.title("🎙️ 토익스피킹 카드 연습")
+st.caption("questions.csv 기반으로 한 문장씩 말하고, 듣고, 저장하면서 연습하세요")
 
 
 # =========================================================
-# 7. 사이드바: 오답노트
+# 7. 사이드바
 # =========================================================
+all_parts = sorted(set(q["part"] for q in st.session_state.all_questions))
+all_categories = sorted(set(q["category"] for q in st.session_state.all_questions))
+
 with st.sidebar:
+    st.header("⚙️ 연습 설정")
+
+    st.success(f"문제은행 로드 완료: {len(st.session_state.all_questions)}문장")
+
+    selected_parts = st.multiselect(
+        "Part 선택",
+        options=all_parts,
+        default=st.session_state.selected_parts,
+    )
+
+    selected_categories = st.multiselect(
+        "카테고리 선택",
+        options=all_categories,
+        default=st.session_state.selected_categories,
+        help="비워두면 전체 카테고리에서 출제됩니다.",
+    )
+
+    if st.button("설정 적용 후 새 세션 시작", use_container_width=True):
+        st.session_state.selected_parts = selected_parts or all_parts
+        st.session_state.selected_categories = selected_categories
+        start_new_session()
+        st.rerun()
+
+    if csv_errors:
+        with st.expander("CSV 경고 보기"):
+            for error in csv_errors[:20]:
+                st.write(f"- {error}")
+
+    st.divider()
+
     st.header("⭐ 오답노트")
 
     if not st.session_state.review_notes:
@@ -511,7 +564,7 @@ with st.sidebar:
         )
 
         for idx, note in enumerate(st.session_state.review_notes, start=1):
-            with st.expander(f"{idx}. {note['topic']} / {note['score']}점"):
+            with st.expander(f"{idx}. {note.get('category', '')} / {note['score']}점"):
                 st.write(f"**KR:** {note['korean']}")
                 st.write(f"**모범:** {note['model_answer']}")
                 st.write(f"**내 답변:** {note['user_answer']}")
@@ -524,32 +577,29 @@ with st.sidebar:
                     remove_review_note(note["id"])
                     st.rerun()
 
-    st.divider()
 
-    if st.button("🔁 새 세션 시작", use_container_width=True):
-        start_new_session()
-        st.rerun()
+# =========================================================
+# 8. 빈 세션 처리
+# =========================================================
+if st.session_state.phase == "empty" or not st.session_state.session_questions:
+    st.warning("선택한 조건에 맞는 문장이 없습니다. 왼쪽 설정에서 Part 또는 카테고리를 다시 선택해 주세요.")
+    st.stop()
 
 
 # =========================================================
-# 8. 진행률
+# 9. 진행률
 # =========================================================
+total_questions = len(st.session_state.session_questions)
+current_number = st.session_state.current_index + 1
+
 if st.session_state.phase != "finished":
     progress_value = st.session_state.current_index / total_questions
     st.progress(progress_value)
-
-    st.markdown(
-        f"""
-        <div class="center-text">
-            <b>{current_number} / {total_questions}</b>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.write(f"**{current_number} / {total_questions}**")
 
 
 # =========================================================
-# 9. 완료 화면
+# 10. 완료 화면
 # =========================================================
 if st.session_state.phase == "finished":
     results = st.session_state.session_results
@@ -563,16 +613,7 @@ if st.session_state.phase == "finished":
         timeout_count = 0
         saved_count = len(st.session_state.review_notes)
 
-    st.markdown(
-        f"""
-        <div class="question-card center-text">
-            <div style="font-size: 3rem;">🏁</div>
-            <h2>오늘의 연습 완료!</h2>
-            <p class="hint-text">한 세션을 끝까지 진행했습니다.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.success("🏁 오늘의 연습 완료! 한 세션을 끝까지 진행했습니다.")
 
     col1, col2, col3 = st.columns(3)
 
@@ -595,57 +636,49 @@ if st.session_state.phase == "finished":
 
 
 # =========================================================
-# 10. 현재 문제 카드
+# 11. 현재 문제 카드
 # =========================================================
 current = get_current_question()
 
-st.markdown(
-    f"""
-    <div class="question-card">
-        <span class="small-label">{current['part']}</span>
-        <span class="small-label">{current['topic']}</span>
-        <span class="small-label">{current['time_limit_sec']}초</span>
+with st.container(border=True):
+    col1, col2, col3 = st.columns(3)
 
-        <div class="korean-sentence">
-            {current['korean']}
-        </div>
+    with col1:
+        st.markdown(f"**{current['part']}**")
 
-        <div class="hint-text">
-            위 문장을 영어로 자연스럽게 말해보세요.
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+    with col2:
+        st.markdown(f"**{current['category']}**")
+
+    with col3:
+        st.markdown(f"**{current['time_limit_sec']}초**")
+
+    st.markdown("### 🇰🇷 한국어 문장")
+    st.info(current["korean"])
+    st.caption("위 문장을 영어로 자연스럽게 말해보세요.")
 
 
 # =========================================================
-# 11. READY 단계
+# 12. READY 단계
 # =========================================================
 if st.session_state.phase == "ready":
-    st.markdown("### 준비되면 시작하세요")
-
+    st.markdown("## 준비되면 시작하세요")
     st.write("버튼을 누르면 제한시간이 시작됩니다.")
 
     if st.button("▶️ 시작하기", use_container_width=True):
         start_answering()
         st.rerun()
 
-    col_skip_1, col_skip_2 = st.columns(2)
+    if st.button("⏭️ 이 문장 건너뛰기", use_container_width=True):
+        go_next_question()
+        st.rerun()
 
-    with col_skip_1:
-        if st.button("⏭️ 이 문장 건너뛰기", use_container_width=True):
-            go_next_question()
-            st.rerun()
-
-    with col_skip_2:
-        if st.button("🔄 문장 다시 섞기", use_container_width=True):
-            start_new_session()
-            st.rerun()
+    if st.button("🔄 새 세션 시작", use_container_width=True):
+        start_new_session()
+        st.rerun()
 
 
 # =========================================================
-# 12. ANSWERING 단계
+# 13. ANSWERING 단계
 # =========================================================
 elif st.session_state.phase == "answering":
     render_countdown_timer(
@@ -653,7 +686,7 @@ elif st.session_state.phase == "answering":
         end_time=st.session_state.exam_end_time,
     )
 
-    st.markdown("### 영어로 답변하세요")
+    st.markdown("## 영어로 답변하세요")
 
     spoken_text = speech_to_text(
         language="en",
@@ -689,7 +722,7 @@ elif st.session_state.phase == "answering":
     st.text_area(
         "내 답변",
         key="answer_input",
-        height=110,
+        height=120,
         placeholder="마이크로 말하면 여기에 영어 문장이 들어옵니다. 필요하면 직접 수정해도 됩니다.",
     )
 
@@ -710,7 +743,7 @@ elif st.session_state.phase == "answering":
 
 
 # =========================================================
-# 13. SCORED 단계
+# 14. SCORED 단계
 # =========================================================
 elif st.session_state.phase == "scored":
     result = st.session_state.current_result
@@ -720,16 +753,10 @@ elif st.session_state.phase == "scored":
         result["within_time"],
     )
 
-    st.markdown(
-        f"""
-        <div class="result-card center-text">
-            <div style="font-size: 2.6rem;">🎯</div>
-            <h2>{title}</h2>
-            <p>{message}</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    if result["within_time"]:
+        st.success(f"🎯 {title} - {message}")
+    else:
+        st.error(f"⏱️ {title} - {message}")
 
     col_score_1, col_score_2 = st.columns(2)
 
@@ -745,29 +772,23 @@ elif st.session_state.phase == "scored":
     if result["duration_sec"] is not None:
         st.caption(f"소요 시간: 약 {result['duration_sec']}초 / 제한 {result['time_limit_sec']}초")
 
-    st.markdown("### 답변 비교")
+    st.markdown("## 답변 비교")
 
-    st.markdown(
-        f"""
-        <div class="answer-box">
-            <b>🗣️ 내 답변</b><br>
-            {result['user_answer']}
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.text_area(
+        "🗣️ 내 답변",
+        value=result["user_answer"],
+        height=130,
+        disabled=True,
     )
 
-    st.markdown(
-        f"""
-        <div class="answer-box">
-            <b>✅ 모범 답안</b><br>
-            {result['model_answer']}
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.text_area(
+        "✅ 모범 답안",
+        value=result["model_answer"],
+        height=130,
+        disabled=True,
     )
 
-    st.markdown("### 🔊 모범 문장 듣기")
+    st.markdown("## 🔊 모범 문장 듣기")
 
     try:
         audio_bytes = make_tts_audio_bytes(result["model_answer"])
@@ -804,8 +825,8 @@ elif st.session_state.phase == "scored":
 
 
 # =========================================================
-# 14. 하단 안내
+# 15. 하단 안내
 # =========================================================
 st.caption(
-    "현재 점수는 AI 채점이 아니라 모범답안과의 문장 유사도입니다. 다음 단계에서 Gemini API를 붙이면 실제 피드백형 채점으로 확장할 수 있습니다."
+    "현재 점수는 AI 채점이 아니라 모범답안과의 문장 유사도입니다. 문제은행은 questions.csv에서 불러옵니다."
 )
