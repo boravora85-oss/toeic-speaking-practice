@@ -1,0 +1,2 @@
+streamlit
+streamlit-mic-recorder
